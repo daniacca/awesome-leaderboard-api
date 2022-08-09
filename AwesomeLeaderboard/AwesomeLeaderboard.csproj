@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DockerComposeProjectPath>../docker-compose.dcproj</DockerComposeProjectPath>
+    <UserSecretsId>d851988c-fbe7-4c75-a5f5-8b79c43b841e</UserSecretsId>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(RunConfiguration)' == 'AwesomeLeaderboard' " />
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="ApiData\" />
+    <None Remove="ApiData\Leaderboard\" />
+    <None Remove="ApiData\user\" />
+    <None Remove="Services\" />
+    <None Remove="ControllerConventions\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="ApiData\" />
+    <Folder Include="ApiData\Leaderboard\" />
+    <Folder Include="ApiData\Users\" />
+    <Folder Include="Services\" />
+    <Folder Include="ControllerConventions\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MessageBus.RabbitMq\MessageBus.RabbitMq.csproj">
+      <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
+    </ProjectReference>
+    <ProjectReference Include="..\Events\Events.csproj">
+      <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
+    </ProjectReference>
+    <ProjectReference Include="..\DataAccess\DataAccess.csproj">
+      <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
+    </ProjectReference>
+    <ProjectReference Include="..\DistributedCache.Redis\DistribuitedCache.Redis.csproj">
+      <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

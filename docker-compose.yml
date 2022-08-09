@@ -1,0 +1,32 @@
+version: '3.4'
+
+services:
+  awesomeleaderboard:
+    image: ${DOCKER_REGISTRY-}awesomeleaderboard
+    container_name: leaderboard-api
+    build:
+      context: .
+      dockerfile: AwesomeLeaderboard/Dockerfile
+
+  mongo:
+    image: mongo
+    container_name: user-db
+
+  redis:
+    image: redis
+    container_name: redis-cache
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis-commander
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    
+  datawriterservice:
+    image: ${DOCKER_REGISTRY-}datawriterservice
+    container_name: data-writer
+    build:
+      context: .
+      dockerfile: DataWriterService/Dockerfile
