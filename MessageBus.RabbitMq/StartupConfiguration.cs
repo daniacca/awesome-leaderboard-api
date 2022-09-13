@@ -74,7 +74,7 @@ public static class StartupConfiguration
     /// <returns></returns>
     public static IServiceCollection AddRabbitMessageConsumer<TBody, TConsumer>(this IServiceCollection services)
         where TBody: class
-        where TConsumer: RabbitConsumerBase<TBody>, IHostedService
+        where TConsumer: RabbitConsumerBase<TBody>
     {
         return services.AddHostedService<TConsumer>();
     }

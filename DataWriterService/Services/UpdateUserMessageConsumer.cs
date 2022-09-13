@@ -11,11 +11,13 @@ using System.Linq;
 
 namespace DataWriterService.Services;
 
-public class UpdateUserMessageConsumer : RabbitConsumerBase<UpdateUserScore>, IHostedService
+public class UpdateUserMessageConsumer : RabbitConsumerBase<UpdateUserScore>
 {
     IUserRepository UserRepository { get; }
 
     IDistributedCacheManager CacheManager { get; }
+
+    ILogger<UpdateUserMessageConsumer> Logger { get; }
 
     public UpdateUserMessageConsumer(
         ConnectionFactory connectionFactory,
@@ -23,17 +25,20 @@ public class UpdateUserMessageConsumer : RabbitConsumerBase<UpdateUserScore>, IH
         IDistributedCacheManager cacheManager,
         IOptions<RabbitClientConfiguration> settings,
         ILogger<RabbitMqBaseClient> loggerBase,
-        ILogger<RabbitConsumerBase<UpdateUserScore>> loggerConsumerBase) :
+        ILogger<RabbitConsumerBase<UpdateUserScore>> loggerConsumerBase,
+        ILogger<UpdateUserMessageConsumer> logger) :
         base(connectionFactory, settings, loggerBase, loggerConsumerBase)
     {
         UserRepository = repository;
         CacheManager = cacheManager;
+        Logger = logger;
     }
 
     protected override string? QueueName => "USER_HOST.user.update";
 
-    protected async Task SaveUpdateOnCache(UpdateUserScore @event)
+    protected async Task UpdateEventStateOnCache(UpdateUserScore @event, EventState newState)
     {
+        @event.State = newState;
         var setCommand = new SetCommand<UpdateUserScore>(new SetCommandPayload<UpdateUserScore>
         {
             Key = @event.Id.ToString(),
@@ -46,9 +51,7 @@ public class UpdateUserMessageConsumer : RabbitConsumerBase<UpdateUserScore>, IH
     public async override Task ExecuteAsync(UpdateUserScore @event)
     {
         await Task.Run(() => Console.WriteLine($"Update message received, content => {{ id: {@event.Id}, username: {@event.Username}, newScore: {@event.NewScore} }}"));
-
-        @event.State = EventState.InProgress;
-        await SaveUpdateOnCache(@event);
+        await UpdateEventStateOnCache(@event, EventState.InProgress);
 
         var result = false;
         if (@event.Username is not null)
@@ -56,33 +59,18 @@ public class UpdateUserMessageConsumer : RabbitConsumerBase<UpdateUserScore>, IH
             try
             {
                 var userFromDB = (await UserRepository.GetListAsync(u => u.Username == @event.Username)).FirstOrDefault();
-                if (userFromDB is null)
+                if (userFromDB is not null)
                 {
-                    @event.State = EventState.FinishWithError;
-                    await SaveUpdateOnCache(@event);
-                    return;
+                    userFromDB.Score = @event.NewScore;
+                    result = await UserRepository.UpdateAsync(userFromDB);
                 }
-
-                userFromDB.Score = @event.NewScore;
-                result = await UserRepository.UpdateAsync(userFromDB);
             }
-            catch
+            catch(Exception ex)
             {
-                @event.State = EventState.FinishWithError;
-                await SaveUpdateOnCache(@event);
-                return;
+                Logger.LogError(ex, "Error while updating DB data");
             }
         }
 
-        @event.State = result ? EventState.Done : EventState.FinishWithError;
-        await SaveUpdateOnCache(@event);
-    }
-
-    public virtual Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-    public virtual Task StopAsync(CancellationToken cancellationToken)
-    {
-        Dispose();
-        return Task.CompletedTask;
+        await UpdateEventStateOnCache(@event, result ? EventState.Done : EventState.FinishWithError);
     }
 }

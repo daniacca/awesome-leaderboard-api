@@ -2,6 +2,7 @@
 using System.Text.Json;
 using MessageBus.Abstraction.Interfaces;
 using MessageBus.RabbitMq.Types;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
@@ -9,7 +10,7 @@ using RabbitMQ.Client.Events;
 
 namespace MessageBus.RabbitMq.AbsClasses;
 
-public abstract class RabbitConsumerBase<TBody> : RabbitMqBaseClient, IMessageConsumerAsync<TBody>
+public abstract class RabbitConsumerBase<TBody> : RabbitMqBaseClient, IMessageConsumerAsync<TBody>, IHostedService
 {
     ILogger<RabbitConsumerBase<TBody>> Logger { get; }
 
@@ -51,6 +52,14 @@ public abstract class RabbitConsumerBase<TBody> : RabbitMqBaseClient, IMessageCo
         {
             Channel?.BasicAck(@event.DeliveryTag, false);
         }
+    }
+
+    public virtual Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public virtual Task StopAsync(CancellationToken cancellationToken)
+    {
+        Dispose();
+        return Task.CompletedTask;
     }
 
     public abstract Task ExecuteAsync(TBody @event);

@@ -16,5 +16,6 @@ public class User : INoSqlCollection
     [CollectionIndex(Unique = true)]
     public string? Username { get; set; }
 
+    [CollectionIndex(Unique = false)]
     public long? Score { get; set; }
 }

@@ -58,15 +58,23 @@ namespace NaTourWine.Core.Repositories.NoSql.Data
                     Sparse = k.GetCustomAttribute<CollectionIndexAttribute>()?.Sparse ?? true,
                 };
 
+                var ordering = k.GetCustomAttribute<CollectionIndexAttribute>()?.Ordering ?? IndexOrdering.Ascending;
+
                 if (k.PropertyType == typeof(string))
                 {
                     var field = new StringFieldDefinition<T>(k.Name);
-                    var indexDefinition = new IndexKeysDefinitionBuilder<T>().Ascending(field);
+                    var indexDefinitionBuilder = new IndexKeysDefinitionBuilder<T>();
+                    var indexDefinition = ordering switch
+                    {
+                        IndexOrdering.Ascending => indexDefinitionBuilder.Ascending(field),
+                        IndexOrdering.Descending => indexDefinitionBuilder.Descending(field),
+                        _ => indexDefinitionBuilder.Ascending(field)
+                    };
                     collection.Indexes.CreateOneAsync(new CreateIndexModel<T>(indexDefinition, options)).Wait();
                 }
                 else
                 {
-                    IndexKeysDefinition<T> keyCode = $"{{ {k.Name}: 1 }}";
+                    IndexKeysDefinition<T> keyCode = $"{{ {k.Name}: {(int)ordering} }}";
                     collection.Indexes.CreateOneAsync(new CreateIndexModel<T>(keyCode, options)).Wait();
                 }
             }

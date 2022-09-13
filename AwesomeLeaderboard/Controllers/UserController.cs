@@ -23,31 +23,33 @@ public class UserController : ControllerBase
         CacheManager = cacheManager;
     }
 
+    private async Task SaveNewEventOnCache<TData>(TData @event) where TData : EventBase
+    {
+        await CacheManager.ExecuteAsync(new SetCommand<TData>(new SetCommandPayload<TData>
+        {
+            Key = @event.Id.ToString(),
+            Data = @event
+        }));
+    }
+
     [HttpPost]
     [Consumes(MediaTypeNames.Application.Json)]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     public async Task<IActionResult> Register([FromBody] RegisterInputData data, [FromServices] RabbitProducerBase<RegisterUser> rabbitProducer)
     {
-        if (data is null || data.Username is null)
+        if(data is null || data.Username is null)
             return BadRequest(new { Message = "User data not specified" });
 
-        var eventId = Guid.NewGuid();
         var registerUserEvent = new RegisterUser
         {
-            Id = eventId,
             Username = data.Username,
             InitialScore = data.InitialScore
         };
 
-        var setCommand = new SetCommand<RegisterUser>(new SetCommandPayload<RegisterUser>
-        {
-            Key = eventId.ToString(),
-            Data = registerUserEvent
-        });
-        await CacheManager.ExecuteAsync(setCommand);
+        await SaveNewEventOnCache(registerUserEvent);
 
         rabbitProducer.Publish(registerUserEvent);
-        return Accepted(new { eventId });
+        return Accepted(new { eventId = registerUserEvent.Id });
     }
 
     [HttpPut("{userName}")]
@@ -58,23 +60,16 @@ public class UserController : ControllerBase
         if(userName is null || data is null)
             return BadRequest(new { Message = "User data not specified" });
 
-        var eventId = Guid.NewGuid();
         var updateUserEvent = new UpdateUserScore
         {
-            Id = eventId,
             Username = userName,
             NewScore = data.NewScore
         };
-        
-        var setCommand = new SetCommand<UpdateUserScore>(new SetCommandPayload<UpdateUserScore>
-        {
-            Key = eventId.ToString(),
-            Data = updateUserEvent
-        });
-        await CacheManager.ExecuteAsync(setCommand);
+
+        await SaveNewEventOnCache(updateUserEvent);
 
         rabbitProducer.Publish(updateUserEvent);
-        return Accepted(new { eventId });
+        return Accepted(new { eventId = updateUserEvent.Id });
     }
 
     [HttpGet("[action]/{type}/{eventId}")]
@@ -87,9 +82,6 @@ public class UserController : ControllerBase
     {
         if(string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(eventId))
             return BadRequest("Input data are missing");
-
-        if(type is not "register" || type is not "update")
-            return BadRequest("Type specified is not supported");
 
         var getCommand = new GetCommand(eventId);
         await CacheManager.ExecuteAsync(getCommand);
@@ -104,13 +96,13 @@ public class UserController : ControllerBase
             _ => null
         };
 
-        if (eventInfo is null)
+        if(eventInfo is null)
             return BadRequest("Type specified is not supported");
 
         if(eventInfo.State == EventState.Done)
             return Ok(new { Message = "The request were executed with success!" });
 
-        if (eventInfo.State == EventState.InProgress)
+        if(eventInfo.State == EventState.InProgress)
             return StatusCode((int)HttpStatusCode.Processing);
 
         return Conflict();

@@ -10,39 +10,38 @@ using NoSql.MongoDb.Repository;
 using NoSql.MongoDb.Types;
 using Repositories.NoSql.MongoDb.Types;
 
-namespace NoSql.MongoDb
+namespace NoSql.MongoDb;
+
+public static class StartupConfiguration
 {
-    public static class StartupConfiguration
+    private static IServiceCollection AddCommonService(IServiceCollection services, IConfiguration configuration, bool withCamelCase = true)
     {
-        private static IServiceCollection AddCommonService(IServiceCollection services, IConfiguration configuration, bool withCamelCase = true)
+        if (withCamelCase)
         {
-            if (withCamelCase)
-            {
-                var pack = new ConventionPack { new CamelCaseNameConvention() };
-                ConventionRegistry.Register("CamelCase", pack, _ => true);
-            }
-
-            services
-                .Configure<MongoConnection>(option => configuration.GetSection(nameof(MongoConnection)).Bind(option))
-                .AddSingleton<IMongoClientService, MongoClientService>()
-                .AddTransient(typeof(IPipelineQuerying<,>), typeof(PipelineQuerying<,>))
-                .AddTransient(typeof(INoSqlDBContext<>), typeof(NoSqlDBContext<>))
-                .AddTransient(typeof(INoSqlRepository<>), typeof(NoSqlRepository<>));
-
-            return services;
+            var pack = new ConventionPack { new CamelCaseNameConvention() };
+            ConventionRegistry.Register("CamelCase", pack, _ => true);
         }
 
-        public static IServiceCollection AddNoSqlRepositoryConfiguration<TSession>(this IServiceCollection services, IConfiguration configuration, bool withCamelCase = true)
-            where TSession : class, INoSqlSessionProvider
-        {
-            services = AddCommonService(services, configuration, withCamelCase);
-            return services.AddHttpContextAccessor().AddScoped<INoSqlSessionProvider, TSession>();
-        }
+        services
+            .Configure<MongoConnection>(option => configuration.GetSection(nameof(MongoConnection)).Bind(option))
+            .AddSingleton<IMongoClientService, MongoClientService>()
+            .AddTransient(typeof(IPipelineQuerying<,>), typeof(PipelineQuerying<,>))
+            .AddTransient(typeof(INoSqlDBContext<>), typeof(NoSqlDBContext<>))
+            .AddTransient(typeof(INoSqlRepository<>), typeof(NoSqlRepository<>));
 
-        public static IServiceCollection AddNoSqlRepositoryConfiguration(this IServiceCollection services, IConfiguration configuration, bool withCamelCase = true)
-        {
-            services = AddCommonService(services, configuration, withCamelCase);
-            return services.AddSingleton<INoSqlSessionProvider, FixedSessionProvider>();
-        }
+        return services;
+    }
+
+    public static IServiceCollection AddNoSqlRepositoryConfiguration<TSession>(this IServiceCollection services, IConfiguration configuration, bool withCamelCase = true)
+        where TSession : class, INoSqlSessionProvider
+    {
+        services = AddCommonService(services, configuration, withCamelCase);
+        return services.AddHttpContextAccessor().AddScoped<INoSqlSessionProvider, TSession>();
+    }
+
+    public static IServiceCollection AddNoSqlRepositoryConfiguration(this IServiceCollection services, IConfiguration configuration, bool withCamelCase = true)
+    {
+        services = AddCommonService(services, configuration, withCamelCase);
+        return services.AddSingleton<INoSqlSessionProvider, FixedSessionProvider>();
     }
 }

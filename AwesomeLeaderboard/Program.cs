@@ -29,15 +29,16 @@ builder.Services.AddNoSqlRepository(builder.Configuration);
 builder.Services.AddRedisCache(builder.Configuration);
 
 var app = builder.Build();
+
+// Middlewar pipeline configuration
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 app.UseHttpsRedirection();
 app.UseAuthorization();
-app.MapControllers();
 app.UseHealthChecks("/status/health");
+app.MapControllers();
 
 app.Run();

@@ -2,6 +2,12 @@
 
 namespace NoSql.MongoDb.Attributes
 {
+    public enum IndexOrdering
+    {
+        Ascending = 1,
+        Descending = -1
+    }
+
     [AttributeUsage(AttributeTargets.Property)]
     public class CollectionIndexAttribute : Attribute
     {
@@ -11,11 +17,18 @@ namespace NoSql.MongoDb.Attributes
 
         public bool Sparse { get; set; }
 
-        public CollectionIndexAttribute(string name = null, bool unique = false, bool sparse = true)
+        public IndexOrdering Ordering { get; set; }
+
+        public CollectionIndexAttribute(
+            string name = null,
+            bool unique = false,
+            bool sparse = true,
+            IndexOrdering ordering = IndexOrdering.Ascending)
         {
             Name = name;
             Unique = unique;
             Sparse = sparse;
+            Ordering = ordering;
         }
     }
 }
